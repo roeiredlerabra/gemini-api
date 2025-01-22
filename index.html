@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניתוח תאונת דרכים - Gemini AI</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .image-upload-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 10px 0;
+            display: none;
+            border-radius: 4px;
+            object-fit: contain;
+        }
+        .file-input {
+            display: none;
+        }
+        .upload-button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .upload-button:hover {
+            background-color: #218838;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            font-size: 16px;
+        }
+        button#submitButton {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            width: 100%;
+        }
+        button#submitButton:hover {
+            background-color: #0056b3;
+        }
+        button#submitButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+        .category {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+        .category strong {
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        .field {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 4px;
+        }
+        .error {
+            color: #dc3545;
+            margin: 10px 0;
+            display: none;
+            padding: 10px;
+            background-color: #ffe6e6;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .field ul {
+            margin: 0;
+            padding-right: 20px;
+        }
+        .field li {
+            margin: 5px 0;
+        }
+        h4 {
+            margin: 10px 0 5px 0;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ניתוח תאונת דרכים</h1>
+
+        <div class="image-upload-container">
+            <input type="file" id="imageInput" class="file-input" accept="image/*">
+            <button class="upload-button" onclick="document.getElementById('imageInput').click()">העלאת תמונה</button>
+            <img id="imagePreview" class="image-preview" alt="תצוגה מקדימה">
+        </div>
+
+        <p>אנא תאר את פרטי התאונה:</p>
+        <textarea id="caseInput" placeholder="הכנס את פרטי התאונה כאן..."></textarea>
+        
+        <button id="submitButton" onclick="analyzeCase()">נתח את התאונה</button>
+        
+        <div id="loading" class="loading">
+            מנתח את התאונה... אנא המתן...
+        </div>
+        
+        <div id="error" class="error"></div>
+        
+        <div id="result" class="result">
+            <h2>ניתוח התאונה</h2>
+            <div id="analysisContent"></div>
+        </div>
+    </div>
+<script>
+    // Global variable for storing image data
+    let imageBase64 = null;
+
+    // Handle image upload
+    document.getElementById('imageInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('imagePreview');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                imageBase64 = e.target.result.split(',')[1];
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Main analysis function
+    async function analyzeCase() {
+        const apiKey = 'AIzaSyDixJ-7jmpArj67qP5mbT95roaO6gvCES4';
+        const caseInput = document.getElementById('caseInput').value.trim();
+        
+        if (!caseInput) {
+            alert('אנא הכנס את פרטי התאונה');
+            return;
+        }
+
+        const button = document.getElementById('submitButton');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+        const analysisContent = document.getElementById('analysisContent');
+
+        button.disabled = true;
+        loading.style.display = 'block';
+        result.style.display = 'none';
+        error.style.display = 'none';
+
+        try {
+            const analysis = await performAnalysis(apiKey, caseInput);
+            analysisContent.innerHTML = formatAnalysis(analysis);
+            result.style.display = 'block';
+        } catch (err) {
+            error.textContent = `שגיאה: ${err.message}`;
+            error.style.display = 'block';
+            console.error('Error:', err);
+        } finally {
+            button.disabled = false;
+            loading.style.display = 'none';
+        }
+    }
+
+    // API interaction function
+    async function performAnalysis(apiKey, caseText) {
+        const systemPrompt = `אתה מומחה לניתוח תאונות דרכים. נתח את המקרה והתמונה (אם קיימת) וספק דו"ח מפורט הכולל את הסעיפים הבאים:
+
+        1. סוג התאונה: סוג התאונה (חזית-חזית, חזית-צד, פגיעה בהולך רגל וכו')
+        2. כלי רכב מעורבים: פירוט כל כלי הרכב המעורבים כולל סוג, צבע ונזק משוער
+        3. צדדים מעורבים:
+           - נהגים וזהותם
+           - נוסעים (אם יש)
+           - הולכי רגל (אם יש)
+           - עדים במקום
+        4. נסיבות התאונה:
+           - מזג אוויר
+           - תנאי דרך
+           - זמן ותאריך
+           - מיקום מדויק
+        5. נזקים:
+           - נזקי גוף (אם ידועים)
+           - נזקי רכוש לכלי רכב
+           - נזק לרכוש אחר
+        6. טיפול ראשוני:
+           - כוחות חירום שהגיעו
+           - פעולות שננקטו במקום
+        7. סוגיות משפטיות:
+           - סוגיות אחריות
+           - הפרות תנועה אפשריות
+           - סוגיות ביטוחיות
+        8. המלצות:
+           - פעולות מיידיות נדרשות
+           - צעדים משפטיים מומלצים
+           - המלצות לטיפול בתביעה`;
+
+        const requestBody = {
+        contents: [{
+            parts: [{
+                text: `${systemPrompt}\n\nCase details: ${caseText}`
+            }]
+        }],
+        generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95
+        }
+    };
+
+    if (imageBase64) {
+        requestBody.contents[0].parts.push({
+            inlineData: {
+                mimeType: "image/jpeg",
+                data: imageBase64
+            }
+        });
+    }
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || 'Failed to connect to Gemini API');
+        }
+
+        const data = await response.json();
+        const textResponse = data.candidates[0].content.parts[0].text;
+
+        console.log('Raw response:', textResponse);
+
+        let jsonString = textResponse
+            .replace(/```json\s*/g, '')  // Remove markdown-style JSON tags.
+            .replace(/```/g, '')         // Remove closing backticks.
+            .replace(/\\n/g, ' ')        // Normalize line breaks.
+            .trim();
+
+        try {
+            return JSON.parse(jsonString);
+        } catch (firstError) {
+            console.log('First parsing attempt failed:', firstError);
+
+            // Attempt JSON extraction via regex
+            const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                jsonString = jsonMatch[0];
+                return JSON.parse(jsonString);
+            }
+
+            // Log raw response and error
+            console.error('Failed to parse response:', textResponse);
+            throw new Error('Could not parse the response format');
+        }
+    } catch (error) {
+        console.error('Complete error:', error);
+        throw new Error(`Failed to process analysis: ${error.message}`);
+    }
+}
+
+    // Helper function for formatting vehicle information
+    function formatVehicle(vehicle) {
+        return `
+            <li>
+                <strong>סוג רכב:</strong> ${vehicle.sug || 'לא צוין'}<br>
+                <strong>צבע:</strong> ${vehicle.tsev || vehicle.tzeva || 'לא צוין'}<br>
+                <strong>נזק משוער:</strong> ${vehicle.nezek || 'לא צוין'}
+            </li>`;
+    }
+
+    // Helper function for formatting driver information
+    function formatDriver(driver) {
+        if (typeof driver === 'object') {
+            return `
+                <li>
+                    <strong>שם:</strong> ${driver.shem || 'לא ידוע'},
+                    <strong>רכב:</strong> ${driver.klv || 'לא ידוע'}
+                </li>`;
+        }
+        return `<li>${driver}</li>`;
+    }
+
+    // Helper function for formatting arrays
+    function formatArray(array, defaultMessage) {
+        if (!Array.isArray(array) || array.length === 0) {
+            return `<li>${defaultMessage}</li>`;
+        }
+        return array.map(item => `<li>${item}</li>`).join('');
+    }
+
+    // Main formatting function
+    function formatAnalysis(analysis) {
+        if (!analysis || typeof analysis !== 'object') {
+            throw new Error('Invalid analysis data received');
+        }
+
+        return `
+            <div class="category">
+                <strong>סוג התאונה:</strong>
+                <div class="field">${analysis.sugTauna || 'לא צוין'}</div>
+            </div>
+
+            <div class="category">
+                <strong>כלי רכב מעורבים:</strong>
+                <div class="field">
+                    <ul>
+                        ${Array.isArray(analysis.kleyRechev) 
+                            ? analysis.kleyRechev.map(formatVehicle).join('')
+                            : '<li>אין מידע על כלי רכב</li>'}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="category">
+                <strong>צדדים מעורבים:</strong>
+                <div class="field">
+                    <h4>נהגים:</h4>
+                    <ul>
+                        ${Array.isArray(analysis.meoravim?.nahagim) 
+                            ? analysis.meoravim.nahagim.map(formatDriver).join('')
+                            : '<li>אין מידע על נהגים</li>'}
+                    </ul>
+
+                    <h4>נוסעים:</h4>
+                    <ul>
+                        ${formatArray(analysis.meoravim?.nosim, 'אין מידע על נוסעים')}
+                    </ul>
+
+                    <h4>הולכי רגל:</h4>
+                    <ul>
+                        ${formatArray(analysis.meoravim?.holcheyRegel, 'אין מידע על הולכי רגל')}
+                    </ul>
+
+                    <h4>עדים:</h4>
+                    <ul>
+                        ${formatArray(analysis.meoravim?.edim, 'אין מידע על עדים')}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="category">
+                <strong>נסיבות התאונה:</strong>
+                <div class="field">
+                    <p><strong>מזג אוויר:</strong> ${analysis.nesibotTauna?.mezegAvir || 'לא צוין'}</p>
+                    <p><strong>תנאי דרך:</strong> ${analysis.nesibotTauna?.tnayDerech || 'לא צוין'}</p>
+                    <p><strong>זמן:</strong> ${analysis.nesibotTauna?.zman || 'לא צוין'}</p>
+                    <p><strong>מיקום:</strong> ${analysis.nesibotTauna?.mikum || 'לא צוין'}</p>
+                </div>
+            </div>
+
+            <div class="category">
+                <strong>נזקים:</strong>
+                <div class="field">
+                    <h4>נזקי גוף:</h4>
+                    <ul>
+                        ${formatArray(analysis.nezakim?.nezakeyGuf, 'אין מידע על נזקי גוף')}
+                    </ul>
+
+                    <h4>נזקי רכוש:</h4>
+                    <ul>
+                        ${formatArray(analysis.nezakim?.nezakeyRechush, 'אין מידע על נזקי רכוש')}
+                    </ul>
+
+                    <h4>נזק אחר:</h4>
+                    <ul>
+                        ${formatArray(analysis.nezakim?.nezekAcher, 'אין מידע על נזקים אחרים')}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="category">
+                <strong>טיפול ראשוני:</strong>
+                <div class="field">
+                    <h4>כוחות חירום:</h4>
+                    <ul>
+                        ${formatArray(analysis.tipulRishoni?.kochotHerum, 'אין מידע על כוחות חירום')}
+                    </ul>
+
+                    <h4>פעולות שננקטו:</h4>
+                    <ul>
+                        ${formatArray(analysis.tipulRishoni?.peulot, 'אין מידע על פעולות שננקטו')}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="category">
+                <strong>סוגיות משפטיות:</strong>
+                <div class="field">
+                    <h4>סוגיות אחריות:</h4>
+                    <ul>
+                        ${formatArray(analysis.sugiotMishpatiot?.achrayut, 'אין מידע על סוגיות אחריות')}
+                    </ul>
+
+                    <h4>הפרות תנועה:</h4>
+                    <ul>
+                        ${formatArray(analysis.sugiotMishpatiot?.avcrotTnua, 'אין מידע על הפרות תנועה')}
+                    </ul>
+
+                    <h4>סוגיות ביטוח:</h4>
+                    <ul>
+                        ${formatArray(analysis.sugiotMishpatiot?.sugiotBituach, 'אין מידע על סוגיות ביטוח')}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="category">
+                <strong>המלצות:</strong>
+                <div class="field">
+                    <h4>פעולות מיידיות:</h4>
+                    <ul>
+                        ${formatArray(analysis.halmatzot?.peulotMiyadiot, 'אין המלצות לפעולות מיידיות')}
+                    </ul>
+
+                    <h4>צעדים משפטיים:</h4>
+                    <ul>
+                        ${formatArray(analysis.halmatzot?.tzadimMishpatim, 'אין המלצות לצעדים משפטיים')}
+                    </ul>
+
+                    <h4>טיפול בתביעה:</h4>
+                    <ul>
+                        ${formatArray(analysis.halmatzot?.tipulTvia, 'אין המלצות לטיפול בתביעה')}
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+</script></body>
+</html>
