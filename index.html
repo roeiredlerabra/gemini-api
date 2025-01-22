@@ -34,6 +34,27 @@
         .file-input {
             display: none;
         }
+        .witness-item {
+    padding: 8px;
+    margin: 5px 0;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.witness-item strong {
+    color: #495057;
+    margin-left: 5px;
+}
+
+.witness-item br {
+    margin: 3px 0;
+}
+
+.no-data {
+    color: #6c757d;
+    font-style: italic;
+}
         .upload-button {
             background-color: #28a745;
             color: white;
@@ -516,7 +537,20 @@ function formatVehicle(vehicle) {
             <strong>נזק משוער:</strong> ${vehicle.nezek || 'לא צוין'}
         </li>`;
 }
-
+function formatWitnessesList(witnesses) {
+    if (!Array.isArray(witnesses) || witnesses.length === 0) {
+        return '<li class="no-data">אין מידע על עדים</li>';
+    }
+    
+    return witnesses
+        .map(witness => {
+            if (typeof witness === 'object' && witness !== null) {
+                return formatWitness(witness);
+            }
+            return `<li class="witness-item">${witness}</li>`;
+        })
+        .join('');
+}
 // Helper function for formatting driver information
 function formatDriver(driver) {
     if (!driver) {
@@ -531,18 +565,47 @@ function formatDriver(driver) {
     }
     return `<li>${driver}</li>`;
 }
-
+function formatWitness(witness) {
+    if (!witness || typeof witness !== 'object') {
+        return '<li>אין מידע זמין על העד</li>';
+    }
+    
+    return `
+        <li class="witness-item">
+            ${witness.shem ? `<strong>שם:</strong> ${witness.shem}<br>` : ''}
+            ${witness.details ? `<strong>פרטים:</strong> ${witness.details}<br>` : ''}
+            ${witness.location ? `<strong>מיקום:</strong> ${witness.location}` : ''}
+        </li>`;
+}
 // Helper function for formatting arrays
 function formatArray(array, defaultMessage, itemClass = '') {
     if (!Array.isArray(array) || array.length === 0) {
         return `<li class="no-data">${defaultMessage}</li>`;
     }
+    
     return array
-        .filter(item => item && item.toString().trim()) // Filter out empty/null values
-        .map(item => `<li class="${itemClass}">${item}</li>`)
+        .filter(item => item) // Filter out null/undefined values
+        .map(item => {
+            if (typeof item === 'object' && item !== null) {
+                // Handle witness object specifically
+                if (item.shem || item.details) {
+                    return `<li class="${itemClass}">
+                        ${item.shem ? `<strong>שם:</strong> ${item.shem}` : ''}
+                        ${item.details ? `<br><strong>פרטים:</strong> ${item.details}` : ''}
+                    </li>`;
+                }
+                // For other objects, show all properties
+                return `<li class="${itemClass}">
+                    ${Object.entries(item)
+                        .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                        .join('<br>')}
+                </li>`;
+            }
+            // For simple values
+            return `<li class="${itemClass}">${item}</li>`;
+        })
         .join('') || `<li class="no-data">${defaultMessage}</li>`;
 }
-
 // Main formatting function
 function formatAnalysis(analysis) {
     if (!analysis || typeof analysis !== 'object') {
@@ -595,8 +658,8 @@ function formatAnalysis(analysis) {
                 <div class="involved-section">
                     <h4>עדים:</h4>
                     <ul class="witnesses-list">
-                        ${formatArray(analysis.meoravim?.edim, 'אין מידע על עדים', 'witness-item')}
-                    </ul>
+                      ${formatWitnessesList(analysis.meoravim?.edim)}
+                               </ul>
                 </div>
             </div>
         </div>
